@@ -1,0 +1,6 @@
+city_manager
+*.o
+*.dat
+*.cfg
+logged_district
+active_reports-*
