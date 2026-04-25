@@ -21,7 +21,9 @@ static void usage(const char *prog)
 }
 
 int main(int argc, char *argv[])
-{
+{    
+    district_check_dangling_symlinks();
+    
     const char *role    = NULL;
     const char *user    = NULL;
     const char *command = NULL;
