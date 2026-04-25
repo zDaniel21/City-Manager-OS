@@ -6,7 +6,6 @@
 #define CONFIG_FILE     "district.cfg"
 #define LOG_FILE        "logged_district"
 #define SYMLINK_PREFIX  "active_reports-"
-
 #define DEFAULT_THRESHOLD 1
 
 //checks if district and its files are ok
@@ -24,5 +23,8 @@ int  district_set_threshold(const char *district, int value);
 
 //create or refresh district symlink
 int  district_update_symlink(const char *district);
+
+//scan for dangling active_reports-* symlinks
+void district_check_dangling_symlinks(void);
 
 #endif
