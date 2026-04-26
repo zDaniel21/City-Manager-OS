@@ -7,6 +7,7 @@
 #include "filter.h"
 #include "log.h"
 
+
 static void usage(const char *prog)
 {
     fprintf(stderr,
