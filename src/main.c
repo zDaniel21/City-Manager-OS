@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
 #include "report.h"
 #include "district.h"
 #include "permissions.h"
 #include "filter.h"
 #include "log.h"
-
+#include "monitor.h"
 
 static void usage(const char *prog)
 {
@@ -16,15 +18,16 @@ static void usage(const char *prog)
         "  %s --role <manager|inspector> --user <name> --list <district>\n"
         "  %s --role <manager|inspector> --user <name> --view <district> <id>\n"
         "  %s --role manager             --user <name> --remove_report <district> <id>\n"
+        "  %s --role manager             --user <name> --remove_district <district>\n"
         "  %s --role manager             --user <name> --update_threshold <district> <value>\n"
         "  %s --role <manager|inspector> --user <name> --filter <district> <cond> [cond...]\n",
-        prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog);
 }
 
 int main(int argc, char *argv[])
-{    
+{
     district_check_dangling_symlinks();
-    
+
     const char *role    = NULL;
     const char *user    = NULL;
     const char *command = NULL;
@@ -82,6 +85,9 @@ int main(int argc, char *argv[])
         if (report_add(district, user, lat, lon, category, severity, description) < 0)
             return 1;
 
+        // notify monitor via SIGUSR1
+        monitor_notify(district, user, role);
+
         log_action(district, user, role, "add");
         return 0;
     }
@@ -125,6 +131,21 @@ int main(int argc, char *argv[])
         if (report_remove(district, report_id) < 0) return 1;
 
         log_action(district, user, role, "remove_report");
+        return 0;
+    }
+
+    // remove_district <district> — manager only
+    if (strcmp(command, "remove_district") == 0) {
+        if (strcmp(role, ROLE_MANAGER) != 0) {
+            fprintf(stderr, "ERROR: remove_district is restricted to managers\n");
+            return 1;
+        }
+        if (n_args < 1) { fprintf(stderr, "ERROR: --remove_district requires <district>\n"); return 1; }
+        const char *district = args[0];
+
+        if (district_remove(district) < 0) return 1;
+
+        log_action(district, user, role, "remove_district");
         return 0;
     }
 
