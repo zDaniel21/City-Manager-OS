@@ -27,4 +27,7 @@ int  district_update_symlink(const char *district);
 //scan for dangling active_reports-* symlinks
 void district_check_dangling_symlinks(void);
 
+//remove entire district directory and its symlink — manager only
+int  district_remove(const char *district);
+
 #endif
