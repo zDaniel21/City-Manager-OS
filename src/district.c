@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include "district.h"
 #include "permissions.h"
 
@@ -154,5 +155,48 @@ int district_update_symlink(const char *district)
         perror(link_name);
         return -1;
     }
+    return 0;
+}
+
+//remove entire district directory using a child process + rm -rf
+int district_remove(const char *district)
+{
+    struct stat st;
+
+    //check district exists
+    if (stat(district, &st) < 0) {
+        fprintf(stderr, "ERROR: district '%s' does not exist\n", district);
+        return -1;
+    }
+
+    //fork a child to run rm -rf
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        return -1;
+    }
+
+    if (pid == 0) {
+        //child process — exec rm -rf
+        execl("/bin/rm", "rm", "-rf", district, NULL);
+        perror("execl");
+        exit(1);
+    }
+
+    //parent waits for child to finish
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+        fprintf(stderr, "ERROR: failed to remove district '%s'\n", district);
+        return -1;
+    }
+
+    //remove the symlink
+    char link_name[256];
+    snprintf(link_name, sizeof(link_name), "%s%s", SYMLINK_PREFIX, district);
+    unlink(link_name);
+
+    printf("District '%s' removed successfully\n", district);
     return 0;
 }
