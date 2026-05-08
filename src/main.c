@@ -143,9 +143,10 @@ int main(int argc, char *argv[])
         if (n_args < 1) { fprintf(stderr, "ERROR: --remove_district requires <district>\n"); return 1; }
         const char *district = args[0];
 
+        log_action(district, user, role, "remove_district");
+
         if (district_remove(district) < 0) return 1;
 
-        log_action(district, user, role, "remove_district");
         return 0;
     }
 
