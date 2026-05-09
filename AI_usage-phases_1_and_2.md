@@ -1,9 +1,11 @@
-# AI Usage Documentation — Phase 1
+# AI Usage Documentation — Phases 1 and 2
 
 ## Tool Used
 Claude (claude-sonnet-4-6), accessed via claude.ai
 
 ---
+
+# Phase 1
 
 ## Prompt 1 — parse_condition
 
@@ -63,7 +65,7 @@ of what went wrong, which would make debugging very difficult.
 
 ---
 
-## What I wrote myself
+## What I wrote myself — Phase 1
 
 The `filter_reports()` function was written entirely by me without AI assistance,
 as required by the spec. It:
@@ -75,7 +77,7 @@ as required by the spec. It:
 
 ---
 
-## What I learned
+## What I learned — Phase 1
 
 - `strtok()` is destructive — it modifies the original string by inserting null bytes
   at delimiter positions. For read-only inputs like `argv[]`, pointer arithmetic
@@ -87,3 +89,55 @@ as required by the spec. It:
   implementation details needed fixing.
 - The exercise of reviewing the generated code line by line was more valuable than
   just using it directly — it forced understanding of every decision made.
+
+---
+
+# Phase 2
+
+## AI Usage in Phase 2
+
+In Phase 2, AI was not used to generate any functional code. All implementation
+was written by me, including:
+- `district_remove()` in `district.c` — fork/exec pattern with `waitpid()`
+- `monitor_main.c` — signal handling with `sigaction()`, PID file management
+- `monitor.c` — reading `.monitor_pid` and sending SIGUSR1 with `kill()`
+- Modifications to `main.c` — `remove_district` command and monitor notification
+
+## AI used for — understanding concepts
+
+AI was consulted to clarify two concepts before writing the code myself:
+
+**1. sigaction() vs signal()**
+> Why does the spec say not to use signal() and to use sigaction() instead?
+
+The AI explained that `signal()` has undefined behavior in POSIX when called
+from within a signal handler, and its behavior varies across implementations.
+`sigaction()` is the correct POSIX interface — it gives explicit control over
+signal masks, restart behavior (`SA_RESTART`), and is safe to use across all
+UNIX systems. I used this understanding to correctly set up both SIGUSR1 and
+SIGINT handlers in `monitor_main.c`.
+
+**2. pause() in a signal loop**
+> What is the correct way to wait for signals without busy-waiting?
+
+The AI explained that `pause()` suspends the process until any signal is
+received, making it the correct and efficient way to implement a signal-driven
+wait loop. I wrote the `while (running) pause()` loop myself based on this
+understanding.
+
+## What I wrote myself — Phase 2
+
+Everything in Phase 2 was written by me. The AI was only consulted for
+conceptual clarification, not code generation.
+
+## What I learned — Phase 2
+
+- `fork()` + `execl()` is the standard UNIX pattern for running external commands
+  from within a C program. The parent must call `waitpid()` to avoid zombie processes.
+- `sigaction()` gives much finer control over signal handling than `signal()` —
+  particularly the `SA_RESTART` flag which automatically restarts interrupted
+  system calls.
+- `kill()` with a PID read from a file is a simple but effective IPC mechanism
+  between two unrelated processes.
+- Writing the PID to a file on startup and deleting it on exit is a standard
+  UNIX daemon pattern used in real-world software.
