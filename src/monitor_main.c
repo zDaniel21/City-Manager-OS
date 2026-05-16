@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "monitor.h"
 
 // flag set by SIGINT to exit the main loop
@@ -11,11 +12,11 @@ static volatile sig_atomic_t running = 1;
 static void handle_sigusr1(int sig)
 {
     (void)sig;
-    printf("[monitor] new report added to the system\n");
+    printf("MSG:new report added to the system\n");
     fflush(stdout);
 }
 
-// SIGINT handler — shutdown 
+// SIGINT handler — shutdown
 static void handle_sigint(int sig)
 {
     (void)sig;
@@ -24,7 +25,23 @@ static void handle_sigint(int sig)
 
 int main(void)
 {
-    // write PID to .monitor_pid 
+    // check if another monitor is already running
+    FILE *existing = fopen(MONITOR_PID_FILE, "r");
+    if (existing) {
+        pid_t existing_pid;
+        if (fscanf(existing, "%d", &existing_pid) == 1) {
+            // check if that process actually exists
+            if (kill(existing_pid, 0) == 0) {
+                printf("ERR:monitor already running with PID %d\n", existing_pid);
+                fflush(stdout);
+                fclose(existing);
+                return 1;
+            }
+        }
+        fclose(existing);
+    }
+
+    // write our PID to .monitor_pid
     FILE *f = fopen(MONITOR_PID_FILE, "w");
     if (!f) {
         perror(MONITOR_PID_FILE);
@@ -33,7 +50,7 @@ int main(void)
     fprintf(f, "%d\n", getpid());
     fclose(f);
 
-    printf("[monitor] started with PID %d\n", getpid());
+    printf("MSG:monitor started with PID %d\n", getpid());
     fflush(stdout);
 
     // set up signal handlers using sigaction — not signal()
@@ -54,7 +71,7 @@ int main(void)
         pause();
 
     // cleanup
-    printf("[monitor] shutting down — removing %s\n", MONITOR_PID_FILE);
+    printf("MSG:monitor shutting down\n");
     fflush(stdout);
     unlink(MONITOR_PID_FILE);
 
