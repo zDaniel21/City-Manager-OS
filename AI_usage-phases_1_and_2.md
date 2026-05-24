@@ -1,4 +1,4 @@
-# AI Usage Documentation — Phases 1 and 2
+# AI Usage Documentation — Phases 1, 2 and 3
 
 ## Tool Used
 Claude (claude-sonnet-4-6), accessed via claude.ai
@@ -141,3 +141,60 @@ conceptual clarification, not code generation.
   between two unrelated processes.
 - Writing the PID to a file on startup and deleting it on exit is a standard
   UNIX daemon pattern used in real-world software.
+
+---
+
+# Phase 3
+
+## AI Usage in Phase 3
+
+In Phase 3, AI was not used to generate any functional code. All implementation
+was written by me, including:
+- `city_hub.c` — interactive CLI with `start_monitor` and `calculate_scores` commands
+- `scorer.c` — reads `reports.dat` and computes per-inspector severity scores
+- Modified `monitor_main.c` — startup check for existing monitor, structured message format
+
+## AI used for — understanding concepts
+
+AI was consulted to clarify two concepts before writing the code myself:
+
+**1. dup2() and pipe() together**
+> How do pipe() and dup2() work together to redirect a child process's stdout?
+
+The AI explained that `pipe()` creates two file descriptors — a read end and a
+write end. After `fork()`, the child calls `dup2(pipefd[1], STDOUT_FILENO)` to
+replace its stdout with the write end of the pipe, then closes both original pipe
+descriptors. The parent closes the write end and reads from the read end. This
+is the standard UNIX pattern for capturing a child process's output. I used this
+understanding to implement both `run_hub_mon()` and `run_calculate_scores()` in
+`city_hub.c`.
+
+**2. Structured message format for inter-process communication**
+> How should a parent process distinguish between different types of messages
+> coming from a child through a pipe?
+
+The AI explained that a simple prefix convention — such as `MSG:` for normal
+messages and `ERR:` for errors — is a common and effective approach for
+distinguishing message types over a pipe. The parent reads line by line and
+checks the prefix before deciding how to display the message. I applied this
+by modifying `monitor_main.c` to prefix all output, and parsing the prefix
+in `city_hub.c` inside `run_hub_mon()`.
+
+## What I wrote myself — Phase 3
+
+All code in Phase 3 was written independently. AI was consulted only for
+conceptual understanding, not for generating any functions or logic.
+
+## What I learned — Phase 3
+
+- `pipe()` + `dup2()` is the standard UNIX mechanism for redirecting a child
+  process's output to a parent — it works by replacing file descriptors before
+  `exec()` is called, so the child is unaware it's writing to a pipe.
+- It is critical to close unused pipe ends in both parent and child — failing
+  to close the write end in the parent prevents EOF from being detected on
+  the read end, causing the parent to block forever.
+- A simple message prefix convention is an effective and lightweight IPC
+  protocol between processes communicating over a pipe.
+- `fdopen()` converts a raw file descriptor into a `FILE*`, allowing the use
+  of `fgets()` for line-by-line reading from a pipe, which is much more
+  convenient than manual `read()` calls for text data.
